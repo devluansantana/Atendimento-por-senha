@@ -1,54 +1,236 @@
 # Atendimento por Senhas
 
-Dois programas em C que compartilham uma fila circular gravada no arquivo `fila.dat`:
+Sistema de atendimento por senhas em C. São **dois programas** rodando em dois terminais ao mesmo tempo, que compartilham **uma única fila** guardada no arquivo `fila.dat`:
 
-- **cliente**: gera uma senha nova e consulta quantas pessoas estão na frente.
-- **atendente**: chama a próxima senha, mostra a fila e roda a demonstração fila linear × circular.
+- **`cliente`** (o totem): gera uma senha nova e consulta quantas pessoas estão na frente.
+- **`atendente`** (o guichê): chama a próxima senha, mostra a fila e roda a demonstração fila linear × circular.
 
-Os programas não conversam diretamente: um grava a fila no arquivo e o outro lê depois.
-O acesso é protegido pela trava `fila.lock`.
+O que o trabalho pede (FIFO, vetor com índices, operador módulo e a limitação da fila linear) fica isolado em `fila.c` e na demonstração do atendente.
 
-O projeto roda no **Linux, dentro do Docker**. A camada de armazenamento usa recursos do Linux (`rename` atômico, `nanosleep`, e os testes usam `fork`), então não compila no Windows nativo.
+- [Como funciona](#como-funciona)
+- [Arquitetura](#arquitetura)
+- [Como colocar para funcionar](#como-colocar-para-funcionar)
+- [Como usar](#como-usar-passo-a-passo) · [Tarefas do VS Code](#tarefas-do-vs-code) · [Testes](#testes) · [Problemas comuns](#problemas-comuns)
 
-## Estrutura
+## Como funciona
 
-| Arquivo | Responsabilidade | Dupla |
+### Visão geral
+
+```
+   ./cliente  (terminal 1)           ./atendente  (terminal 2)
+gera senha, consulta posição      chama a próxima, mostra a fila
+              │                                  │
+              └──────────────┐    ┌──────────────┘
+                             ▼    ▼
+                 ┌────────────────────────────┐
+                 │ fila.lock   a trava        │
+                 │ fila.dat    a fila inteira │
+                 └────────────────────────────┘
+```
+
+Os dois programas **nunca conversam diretamente**. Um grava a fila no arquivo e o outro lê o arquivo depois: essa é toda a comunicação. Cada programa só carrega a fila para a memória quando o usuário escolhe uma opção do menu, e o `fila.lock` garante que só um mexe por vez.
+
+### A fila circular (`fila.h` / `fila.c`)
+
+A fila é um vetor de tamanho fixo e quatro números:
+
+```c
+#define TAM 5
+
+typedef struct {
+    int senhas[TAM];
+    int inicio;        // índice da próxima senha a ser chamada
+    int fim;           // índice onde entra a próxima senha gerada
+    int qtd;           // quantas senhas estão esperando
+    int proxima_senha; // contador para gerar números novos (1, 2, 3...)
+} Fila;
+```
+
+- **Entrar na fila** (`enfileirar`): a senha nova vai para `senhas[fim]` e o `fim` anda uma posição. Se `qtd == TAM`, a fila está cheia e a função devolve `-1`.
+- **Sair da fila** (`desenfileirar`): sai `senhas[inicio]`, a mais antiga (**FIFO**: primeiro a entrar, primeiro a sair), e o `inicio` anda uma posição. Se `qtd == 0`, devolve `-1`.
+- **Consultar** (`posicao_da_senha`): percorre as `qtd` senhas a partir do `inicio` e devolve quantas estão na frente, ou `-1` se a senha não está na fila.
+
+Os índices andam com o **operador módulo**: depois da última posição eles voltam para 0, reaproveitando o espaço liberado no começo do vetor.
+
+```c
+f->fim    = (f->fim + 1) % TAM;      // com TAM = 5: 3 → 4 → 0 → 1
+f->inicio = (f->inicio + 1) % TAM;
+```
+
+**Por que existe o `qtd`:** na fila circular, `inicio == fim` acontece tanto com a fila vazia quanto com a cheia. O contador desfaz a dúvida: `qtd == 0` é vazia, `qtd == TAM` é cheia.
+
+### Uma ação, do menu ao arquivo
+
+Toda opção do menu, nos dois programas, segue o mesmo padrão. Exemplo do cliente gerando uma senha (`cliente.c`):
+
+```c
+travar();                 // cria fila.lock; se já existe, espera a vez
+carregar_fila(&f);        // fila.dat → memória (um fread da struct inteira)
+senha = enfileirar(&f);   // mexe só na cópia em memória
+if (senha != -1)
+    salvar_fila(&f);      // memória → fila.dat (fwrite)
+destravar();              // apaga fila.lock
+```
+
+As consultas (**Consultar posição** e **Ver fila**) só leem: travam, carregam e destravam, sem salvar.
+
+Exemplo com os dois programas abertos. Estado inicial do `fila.dat`: `senhas = [7 8 9 _ _]`, `inicio = 0`, `fim = 3`, `qtd = 3`, `proxima_senha = 10`.
+
+| Passo | Quem | Ação | `fila.dat` depois |
+|---|---|---|---|
+| 1 | Cliente | Gerar senha: lê, enfileira a 10, grava | `[7 8 9 10 _]`, `fim = 4`, `qtd = 4` |
+| 2 | Atendente | Chamar próxima: lê, tira a 7, grava | `inicio = 1`, `qtd = 3` |
+| 3 | Cliente | Consultar a senha 10: lê e calcula | sem mudança (2 pessoas na frente: 8 e 9) |
+
+No passo 2 o atendente já enxerga a senha 10 porque leu o arquivo que o cliente acabou de gravar.
+
+Os programas **não ficam relendo o arquivo**: cada um lê só quando o usuário escolhe uma opção. A exceção é a opção **4 - Acompanhar fila ao vivo** do atendente, que relê a cada 1 s.
+
+### O arquivo `fila.dat` (`armazenamento.c`)
+
+- Guarda a **struct inteira** como um bloco de bytes (com `TAM = 5`, são 36 bytes). Um `fread` copia o bloco para uma variável `Fila` e um `fwrite` grava de volta; não é preciso montar elemento por elemento.
+- **Sem arquivo**, `carregar_fila` começa uma fila nova (`inicializar`).
+- **Arquivo estranho** (tamanho errado, gravado com outro `TAM` ou com índices fora do vetor): o programa avisa e para, em vez de ler lixo. Basta apagar o `fila.dat`.
+- **Gravação segura:** `salvar_fila` grava primeiro em `fila.dat.tmp.<pid>` e depois troca pelo `fila.dat` com `rename()`, que no Linux acontece de uma vez. Se o programa cair no meio da gravação, quem se estraga é o temporário; o `fila.dat` continua inteiro.
+
+### A trava `fila.lock`
+
+Sem trava, uma senha pode sumir quando os dois programas mexem ao mesmo tempo. Isso se chama **condição de corrida**:
+
+1. O cliente lê `qtd = 3`.
+2. O atendente lê `qtd = 3`.
+3. O cliente enfileira e grava `qtd = 4`.
+4. O atendente desenfileira e grava `qtd = 2`, por cima do que o cliente gravou.
+5. A senha gerada no passo 3 sumiu.
+
+Como a trava resolve:
+
+- Antes de ler, o programa tenta criar o `fila.lock` com `fopen("fila.lock", "wx")`. O `"x"` só cria se o arquivo **não existir**, e o Linux faz "verificar e criar" numa operação só (`O_CREAT | O_EXCL`). Por isso dois programas nunca conseguem ao mesmo tempo.
+- **Conseguiu criar:** a vez é dele. Lê, mexe, grava e apaga o `fila.lock`.
+- **Já existia:** o outro programa está mexendo. Espera 100 ms e tenta de novo.
+- O `fila.lock` guarda o número do processo (PID) de quem está com a trava: `cat fila.lock` mostra quem é.
+- Se o programa sair por erro segurando a trava, ela é apagada sozinha (`atexit`). Se ele for morto no meio (Ctrl+C, terminal fechado), a trava pode ficar: depois de 3 s esperando, o outro programa avisa para apagar o `fila.lock` (tarefa **Zerar a fila**).
+
+A tarefa **Mostrar condição de corrida (com e sem trava)** mostra isso na prática: 4 processos gravando a mesma fila perdem mais da metade das 100 gravações sem a trava, e nenhuma com ela.
+
+### Fila linear × circular (demonstração)
+
+O sistema real usa a fila **circular**. A fila **linear** (`fila_linear.c`) aparece só na opção **3 - Demonstração** do atendente (ou `./demo`), que roda em memória e não mexe no `fila.dat`. Com `TAM = 5`:
+
+| Passo | Fila linear | Fila circular |
 |---|---|---|
-| `fila.h` / `fila.c` | Struct da fila, enfileirar, desenfileirar, posição (vetor, índices, módulo) | A |
-| `armazenamento.h` / `armazenamento.c` | Ler/gravar `fila.dat`, travar/destravar com `fila.lock` | C |
-| `cliente.c` | Menu do cliente (`main` próprio) | D |
-| `atendente.c` | Menu do atendente (`main` próprio); chama a demonstração | D |
-| `demonstracao.h` / `demonstracao.c` | Roteiro passo a passo linear × circular, em memória | B |
-| `fila_linear.h` / `fila_linear.c` | Fila linear, usada só na demonstração | B |
-| `demo_main.c` | `main` que roda só a demonstração (`./demo`) | B |
-| `testes/teste_fila.c` | Testes da fila (F-05) | A / B |
-| `testes/teste_armazenamento.c` | Testes de aceite da A-01 e A-02 | C |
-| `testes/teste_dois_processos.c` | A-03: 20 senhas entre dois processos, nenhuma perdida | C |
-| `testes/medir_desempenho.c` | E-02: tempo de `carregar_fila()` com `TAM = 1000` | A |
-| `compilar.sh` / `testar.sh` | Compila tudo / compila e roda todos os testes | — |
-| `compilar.bat` | Atalho do Windows que compila dentro do Docker | — |
-| `Dockerfile` / `docker-compose.yml` | Ambiente Linux com gcc, gdb, valgrind e git | — |
-| `.devcontainer/` | Abre o projeto dentro do container no VS Code | — |
-| `.vscode/` | Tarefas (compilar, testar, abrir os programas), depuração (F5) e IntelliSense | — |
-| `docs/` | Roteiro da demonstração, desempenho, sprint 1 da Dupla C | — |
+| Enfileira 1, 2, 3, 4, 5 | `[1 2 3 4 5]`, `fim = 5` | `[1 2 3 4 5]`, `fim = (4 + 1) % 5 = 0` |
+| Chama 3 senhas | `[_ _ _ 4 5]`, `inicio = 3` | `[_ _ _ 4 5]`, `inicio = 3` |
+| Tenta enfileirar a 6 | **"Fila cheia!"**: `fim = 5` já passou do vetor, mesmo com 3 posições livres | `[6 _ _ 4 5]`: a 6 entra na posição 0, reaproveitada |
+| Chama a próxima | Sai a 4 (FIFO) | Sai a 4 (FIFO) |
 
-`fila.dat` e `fila.lock` são criados ao rodar e não vão para o repositório.
+Na linear, os índices só andam para frente, então as posições liberadas no começo nunca mais são usadas. O texto do que falar em cada passo está em [docs/roteiro-demonstracao.md](docs/roteiro-demonstracao.md).
 
-As assinaturas de `fila.h` e `armazenamento.h` são o contrato entre as duplas: não mude sem combinar com o time.
+## Arquitetura
 
-## Começando (VS Code + Dev Container, recomendado)
+### Camadas
 
-Precisa do **Docker Desktop** aberto e das extensões **Dev Containers** e **C/C++** no VS Code (o VS Code sugere as duas ao abrir a pasta).
+Cada arquivo tem uma responsabilidade só. A lógica da fila não sabe que existe arquivo nem tela.
 
-1. Abra a pasta do projeto no VS Code.
-2. `Ctrl+Shift+P` → **Dev Containers: Reopen in Container**. Na primeira vez ele monta a imagem (alguns minutos) e já compila tudo.
-3. Pronto: o editor, o terminal (`Ctrl+'`), as tarefas e o depurador rodam no Linux do container.
+| Camada | Arquivos | Faz | Não faz | Usa | Dupla |
+|---|---|---|---|---|---|
+| Lógica da fila | `fila.h`, `fila.c` | Struct `Fila`, enfileirar, desenfileirar, posição (vetor, índices, módulo) | Ler arquivo, imprimir na tela | nada | A |
+| Armazenamento | `armazenamento.h`, `armazenamento.c` | Ler e gravar `fila.dat`; travar e destravar com `fila.lock` | Mexer na lógica da fila | `fila.h` (só `inicializar`) | C |
+| Interfaces | `cliente.c`, `atendente.c` | Menus; cada um tem seu `main` | Lógica de fila ou de arquivo | `fila.h`, `armazenamento.h` | D |
+| Demonstração | `demonstracao.h/.c`, `fila_linear.h/.c`, `demo_main.c` | Roteiro linear × circular, em memória | Mexer no `fila.dat` | `fila.h` | B |
 
-### Sem o Dev Container (pasta aberta direto no Windows)
+### Contrato entre as camadas
 
-Também funciona. Com o Docker Desktop aberto, rode uma vez a tarefa **Compilar tudo** (`Ctrl+Shift+B`): ela sobe o container, compila e copia os headers do Linux para `.vscode/linux-headers/`. A partir daí o IntelliSense entende `unistd.h`, `sys/wait.h` etc. e para de marcar erros falsos. Os headers copiados não vão para o Git.
+As funções de `fila.h` e `armazenamento.h` são o contrato entre as duplas. Enquanto ninguém mudar as assinaturas, cada dupla trabalha sem esperar a outra. **Não mude sem combinar com o time.**
 
-### Tarefas
+```c
+/* fila.h */
+void inicializar(Fila *f);                 // fila vazia, próxima senha = 1
+int  enfileirar(Fila *f);                  // senha gerada, ou -1 se cheia
+int  desenfileirar(Fila *f);               // senha chamada, ou -1 se vazia
+int  posicao_da_senha(Fila *f, int senha); // pessoas na frente, ou -1 se não está na fila
+
+/* armazenamento.h */
+void carregar_fila(Fila *f);               // fila.dat → memória (sem arquivo: fila nova)
+void salvar_fila(const Fila *f);           // memória → fila.dat
+void travar(void);                         // cria fila.lock, esperando a vez
+void destravar(void);                      // apaga fila.lock
+```
+
+### Estrutura do repositório
+
+```
+├── fila.h, fila.c                      lógica da fila circular
+├── armazenamento.h, armazenamento.c    fila.dat e fila.lock
+├── cliente.c, atendente.c              os dois programas (cada um com seu main)
+├── demonstracao.h, demonstracao.c      roteiro linear × circular
+├── fila_linear.h, fila_linear.c        fila linear (só na demonstração)
+├── demo_main.c                         main que roda só a demonstração
+├── testes/                             testes automáticos e medição de desempenho
+├── docs/                               roteiro da demonstração, desempenho, sprint 1
+├── compilar.sh, testar.sh              compila tudo / compila e roda os testes
+├── compilar.bat                        atalho do Windows (compila dentro do Docker)
+├── Dockerfile, docker-compose.yml      ambiente Linux com gcc, gdb, valgrind e git
+├── .devcontainer/                      abre o projeto dentro do container no VS Code
+└── .vscode/                            tarefas, depuração (F5) e IntelliSense
+```
+
+`fila.dat` e `fila.lock` são criados ao rodar e não vão para o Git.
+
+### Ambiente: por que Docker
+
+O projeto roda no **Linux, dentro de um container Docker**, para todo o time ter o mesmo ambiente. A camada de armazenamento usa recursos do Linux (`rename` atômico, `nanosleep`, `getpid`) e os testes usam `fork` para criar processos de verdade. Por isso **não compila no Windows nativo**.
+
+- O container tem gcc, gdb, valgrind e git. O código **não** é copiado para dentro dele: a pasta do projeto é montada em `/app`, então o que você edita no VS Code aparece no container na hora.
+- O container fica ligado para abrir vários terminais nele, como o do cliente e o do atendente. Os dois enxergam o mesmo `fila.dat`.
+- As tarefas do VS Code chamam o container sozinhas: não é preciso digitar comandos do Docker.
+
+## Como colocar para funcionar
+
+### Pré-requisitos
+
+- **Docker Desktop** instalado e **aberto**.
+- **VS Code** com as extensões **C/C++** e **Dev Containers** (o VS Code sugere as duas ao abrir a pasta).
+- **Git**.
+
+### Primeira vez, no VS Code
+
+1. Clone o repositório e abra a pasta no VS Code:
+   ```sh
+   git clone https://github.com/gabrielsantanaf/Atendimento-por-senha.git
+   code Atendimento-por-senha
+   ```
+2. Com o Docker Desktop aberto, aperte **`Ctrl+Shift+B`** (tarefa **Compilar tudo**). Na primeira vez ela monta o container (leva alguns minutos), compila tudo e copia os headers do Linux para o IntelliSense não marcar erros falsos em `unistd.h`, `sys/wait.h` etc.
+3. `Ctrl+Shift+P` → **Tasks: Run Task** → **Abrir cliente e atendente lado a lado**.
+
+Pronto: os dois programas abrem em terminais divididos, usando a mesma fila. Para conferir que está tudo certo, rode a tarefa **Rodar todos os testes**.
+
+**Opcional, Dev Container:** `Ctrl+Shift+P` → **Dev Containers: Reopen in Container** abre o próprio editor dentro do Linux do container. O IntelliSense passa a usar o gcc de verdade e o depurador (F5) funciona.
+
+### Pelo terminal, sem VS Code
+
+```sh
+docker compose up -d --build      # sobe o container (na primeira vez ou depois de mudar o Dockerfile)
+docker compose exec dev bash      # abre um terminal dentro do container
+./testar.sh                       # (dentro do container) compila e roda todos os testes
+```
+
+Para usar os dois programas, abra **dois terminais**, rode `docker compose exec dev bash` em cada um e depois `./cliente` em um e `./atendente` no outro.
+
+Para desligar o container: `docker compose down`. O `compilar.bat` é um atalho que compila dentro do Docker sem abrir o container.
+
+## Como usar (passo a passo)
+
+1. No terminal do cliente, escolha **1 - Gerar senha** algumas vezes. Cada uma mostra o número da senha.
+2. Ainda no cliente, escolha **2 - Consultar posição**, digite uma senha e veja quantas pessoas estão na frente.
+3. No terminal do atendente, escolha **2 - Ver fila**: aparece o vetor, `inicio`, `fim` e `qtd`.
+4. No atendente, escolha **1 - Chamar próxima**: sai a senha mais antiga. Volte ao cliente e consulte de novo: a posição diminuiu.
+5. No atendente, a opção **3 - Demonstração linear × circular** roda o roteiro em memória (aperte Enter para avançar). Ela não altera a fila real.
+6. No atendente, a opção **4 - Acompanhar fila ao vivo** atualiza a tela a cada 1 s; aperte Enter para voltar ao menu.
+
+A fila tem `TAM = 5`: com 5 senhas esperando, o cliente recebe "Fila cheia" até o atendente chamar alguém. Para começar do zero, use a tarefa **Zerar a fila** (ou apague o `fila.dat`).
+
+## Tarefas do VS Code
 
 `Ctrl+Shift+P` → **Tasks: Run Task** e escolha:
 
@@ -60,73 +242,32 @@ Também funciona. Com o Docker Desktop aberto, rode uma vez a tarefa **Compilar 
 | **Abrir cliente** / **Abrir atendente** | Um programa por vez |
 | **Abrir demonstração linear x circular** | O roteiro da apresentação (`./demo`) |
 | **Mostrar condição de corrida (com e sem trava)** | Com trava nada se perde; sem trava várias gravações somem |
-| **Medir desempenho (E-02)** | Tempo de `carregar_fila()`/`salvar_fila()` com `TAM = 1000` |
+| **Medir desempenho (E-02)** | Tempo de `carregar_fila()` e `salvar_fila()` com `TAM = 1000` |
 | **Zerar a fila** | Apaga `fila.dat` e `fila.lock`; a próxima senha volta a ser 1 |
 | **Preparar IntelliSense no Windows** | Copia de novo os headers do Linux (a **Compilar tudo** já faz isso na primeira vez) |
 | **Docker: iniciar / reconstruir / desligar container** | Para quem abriu a pasta no Windows |
 
-As tarefas também funcionam com a pasta aberta no Windows: nesse caso cada comando roda no container com `docker compose exec`.
+As tarefas funcionam com a pasta aberta no Windows (cada comando roda no container com `docker compose exec`) e dentro do Dev Container (rodam direto no Linux).
 
 ### Depurar (F5)
 
 Dentro do Dev Container: clique à esquerda do número da linha para pôr um breakpoint, escolha **Depurar cliente**, **Depurar atendente** ou um dos testes na aba *Run and Debug* (`Ctrl+Shift+D`) e aperte **F5**. O programa roda no terminal integrado e para no breakpoint.
 
-## Sem o VS Code (terminal do Windows)
-
-```sh
-docker compose up -d --build      # sobe o container (só na primeira vez ou após mudar o Dockerfile)
-docker compose exec dev bash      # abre um terminal dentro do container
-```
-
-Dentro do container:
-
-```sh
-./testar.sh                       # compila e roda todos os testes
-```
-
-Para testar os dois programas juntos, abra **dois terminais** no Windows e rode
-`docker compose exec dev bash` em cada um. Depois:
-
-```sh
-./cliente      # terminal 1
-./atendente    # terminal 2
-```
-
-Os dois rodam no mesmo container e enxergam o mesmo `fila.dat` e `fila.lock`.
-
-Para desligar: `docker compose down`.
-
-O `compilar.bat` é um atalho que compila dentro do Docker sem abrir o container: `compilar.bat`.
-
-## Como usar (passo a passo)
-
-1. No terminal 1 (`./cliente`), escolha **1 - Gerar senha** algumas vezes. Cada uma mostra o número da senha.
-2. Ainda no cliente, escolha **2 - Consultar posição**, digite uma senha e veja quantas pessoas estão na frente.
-3. No terminal 2 (`./atendente`), escolha **2 - Ver fila**: aparece o vetor, `inicio`, `fim` e `qtd`.
-4. No atendente, escolha **1 - Chamar próxima**: sai a senha mais antiga. Volte ao cliente e consulte de novo: a posição diminuiu.
-5. No atendente, a opção **3 - Demonstração linear × circular** roda o roteiro em memória (aperte Enter para avançar). Ela não altera a fila real.
-6. No atendente, a opção **4 - Acompanhar fila ao vivo** atualiza a tela a cada 1 s; aperte Enter para voltar ao menu.
-
-A fila tem `TAM = 5`: com 5 senhas esperando, o cliente recebe "Fila cheia" até o atendente chamar alguém.
-Para começar do zero, use a tarefa **Zerar a fila** (ou apague o `fila.dat`).
-
 ## Testes
 
-```sh
-./testar.sh                 # compila e roda os três testes abaixo
-./teste_fila                # F-05: vazia, cheia, volta do índice, FIFO
-./teste_armazenamento       # A-01 e A-02: arquivo e trava
-./teste_dois_processos      # A-03: 20 senhas entre cliente e atendente, nenhuma perdida
-./teste_armazenamento --sem-trava   # mostra a condição de corrida (para a apresentação)
-./medir_desempenho          # E-02: tempo com TAM = 1000 (resultado em docs/desempenho.md)
-./demo                      # só a demonstração linear × circular
-```
+| Comando | O que testa |
+|---|---|
+| `./testar.sh` | Compila e roda os três testes abaixo |
+| `./teste_fila` | F-05: fila vazia, cheia, volta do índice para 0, ordem FIFO e posição |
+| `./teste_armazenamento` | A-01 e A-02: gravar e reabrir a fila idêntica; a trava faz o segundo processo esperar |
+| `./teste_armazenamento --sem-trava` | Mostra a condição de corrida (para a apresentação) |
+| `./teste_dois_processos` | A-03: 20 senhas geradas e chamadas por dois processos, nenhuma perdida |
+| `./medir_desempenho` | E-02: tempo com `TAM = 1000` (resultado em [docs/desempenho.md](docs/desempenho.md)) |
+| `./demo` | Só a demonstração linear × circular |
 
 Os testes rodam em pastas temporárias em `/tmp` e não mexem no `fila.dat` do projeto.
 
-O roteiro do que falar em cada passo da demonstração está em [docs/roteiro-demonstracao.md](docs/roteiro-demonstracao.md).
-
-## Comandos de compilação (o que o `compilar.sh` faz)
+### Comandos de compilação (o que o `compilar.sh` faz)
 
 ```sh
 gcc -Wall -g cliente.c fila.c armazenamento.c -o cliente
@@ -140,6 +281,16 @@ gcc -Wall -g -DTAM=1000 -I. testes/medir_desempenho.c fila.c armazenamento.c -o 
 
 O `-g` só acrescenta informação para o depurador; não muda o comportamento.
 
+## Perguntas que costumam aparecer
+
+**"Ler o arquivo inteiro toda vez não fica lento?"** Não nessa escala. Com `TAM = 1000` e a fila cheia, `carregar_fila()` leva cerca de 9 microssegundos neste computador. O vetor tem tamanho fixo, então o custo depende do `TAM`, não de quantas pessoas estão na fila. Detalhes em [docs/desempenho.md](docs/desempenho.md).
+
+**"E se o programa fechar no meio e deixar o `fila.lock`?"** Se ele sair por erro, a trava é apagada sozinha. Se for morto (Ctrl+C), o outro programa avisa depois de 3 s e basta apagar o `fila.lock`. Detectar trava abandonada automaticamente ficou fora do escopo.
+
+**"Por que não usar só a fila linear?"** Porque ela desperdiça as posições liberadas: num atendimento contínuo, diria "cheia" com o vetor quase vazio. A demonstração mostra isso.
+
+**"Por que dois programas e não um só?"** Para simular a situação real: o totem do cliente e o guichê do atendente são lugares diferentes, acessando a mesma fila.
+
 ## Problemas comuns
 
 | Sintoma | Causa e solução |
@@ -149,6 +300,12 @@ O `-g` só acrescenta informação para o depurador; não muda o comportamento.
 | `Aguardando fila.lock...` | Um programa fechou no meio e deixou a trava. Feche cliente e atendente e rode **Zerar a fila** (ou `rm fila.lock`). |
 | `fila.dat esta corrompido ou foi gravado com outro TAM` | Apague o `fila.dat` (tarefa **Zerar a fila**). |
 | `Fila cheia!` no cliente | Normal com `TAM = 5`: chame senhas no atendente. |
+
+## Documentação
+
+- [docs/roteiro-demonstracao.md](docs/roteiro-demonstracao.md): o que falar em cada passo da demonstração (D-03).
+- [docs/desempenho.md](docs/desempenho.md): medição de `carregar_fila()` e `salvar_fila()` (E-02).
+- [docs/sprint1-dupla-c.md](docs/sprint1-dupla-c.md): planejamento e decisões da camada de armazenamento.
 
 ## Definition of Done
 
