@@ -2,7 +2,7 @@
 
 **Histórias:** A-01 (3 pts) e A-02 (3 pts), 6 pontos no total.
 **Branch:** `dupla-c/armazenamento`
-**Arquivos da dupla:** `armazenamento.h`, `armazenamento.c`, `testes/teste_armazenamento.c`
+**Arquivos da dupla:** `include/armazenamento.h`, `src/armazenamento.c`, `testes/teste_armazenamento.c`, `testes/teste_dois_processos.c`
 **Ambiente:** Linux, dentro do Docker (`docker compose exec dev bash`).
 
 ## Dependências
@@ -41,21 +41,21 @@ As assinaturas de `armazenamento.h` são contrato: **não mudar** sem combinar c
 
 ## Como testar
 
-No VS Code (Dev Container): tarefa **Rodar todos os testes**. No terminal:
+No VS Code: tarefa **Rodar todos os testes**. No terminal:
 
 ```sh
 docker compose exec dev bash
-./testar.sh                         # compila e roda todos os testes
-./teste_armazenamento               # testes de aceite da A-01 e A-02
-./teste_armazenamento --sem-trava   # mostra senhas se perdendo sem a trava
+./testar.sh                             # compila e roda todos os testes
+./bin/teste_armazenamento               # testes de aceite da A-01 e A-02
+./bin/teste_armazenamento --sem-trava   # mostra senhas se perdendo sem a trava
 ```
 
 Os testes rodam numa pasta em `/tmp` e não mexem no `fila.dat` do projeto.
 
 ## Para a review (o que mostrar rodando)
 
-1. `./teste_armazenamento` com tudo `[OK]`.
-2. `./teste_armazenamento --sem-trava`: com trava não se perde nada; sem trava, várias gravações somem. É a condição de corrida do documento acontecendo de verdade.
+1. `./bin/teste_armazenamento` com tudo `[OK]`.
+2. `./bin/teste_armazenamento --sem-trava`: com trava não se perde nada; sem trava, várias gravações somem. É a condição de corrida do documento acontecendo de verdade.
 3. Em dois terminais: no primeiro, `touch fila.lock`; no segundo, rodar uma ação do menu (ex.: gerar senha). Ela fica esperando e, depois de 3 s, avisa da trava. Ao rodar `rm fila.lock` no primeiro, a ação continua.
 
 ## O que a dupla precisa saber explicar
@@ -69,6 +69,6 @@ Os testes rodam numa pasta em `/tmp` e não mexem no `fila.dat` do projeto.
 ## Definition of Done
 
 - [ ] Compila sem warnings com `gcc -Wall` (no Docker)
-- [ ] `./teste_armazenamento` passa
+- [ ] `./bin/teste_armazenamento` passa
 - [ ] Revisado por alguém de **outra dupla** (sugestão: Dupla D, que vai usar estas funções na I-05)
 - [ ] Merge no `main` via Pull Request

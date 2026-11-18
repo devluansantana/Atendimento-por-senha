@@ -1,6 +1,7 @@
 /*
  * Programa do cliente (Dupla D): gera senha e consulta posicao.
- * Compilar: gcc -Wall cliente.c fila.c armazenamento.c -o cliente
+ * Compilar (na raiz do projeto): ./compilar.sh   -> gera bin/cliente
+ *     gcc -Wall -Iinclude src/cliente.c src/fila.c src/armazenamento.c -o bin/cliente
  */
 #include <ctype.h>
 #include <errno.h>

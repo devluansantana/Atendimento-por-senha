@@ -8,7 +8,8 @@
  * nenhuma perdida, e chamadas na ordem em que foram geradas (FIFO).
  *
  * Linux apenas (usa fork). Compilar na raiz do projeto:
- *     gcc -Wall -I. testes/teste_dois_processos.c fila.c armazenamento.c -o teste_dois_processos
+ *     gcc -Wall -Iinclude testes/teste_dois_processos.c src/fila.c src/armazenamento.c -o bin/teste_dois_processos
+ *     ./bin/teste_dois_processos
  */
 #define _POSIX_C_SOURCE 200809L
 

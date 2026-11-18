@@ -9,7 +9,7 @@
     {
       "name": "Win32",
       "includePath": [
-        "${workspaceFolder}",
+        "${workspaceFolder}/include",
         "${workspaceFolder}/.vscode/linux-headers/gcc-include",
         "${workspaceFolder}/.vscode/linux-headers/include/x86_64-linux-gnu",
         "${workspaceFolder}/.vscode/linux-headers/include"
@@ -21,7 +21,7 @@
     },
     {
       "name": "Linux",
-      "includePath": ["${workspaceFolder}"],
+      "includePath": ["${workspaceFolder}/include"],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "gnu17",
       "intelliSenseMode": "linux-gcc-x64"

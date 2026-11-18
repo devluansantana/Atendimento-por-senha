@@ -7,9 +7,11 @@
 Programa: `testes/medir_desempenho.c`, compilado com `TAM = 1000`:
 
 ```sh
-gcc -Wall -DTAM=1000 -I. testes/medir_desempenho.c fila.c armazenamento.c -o medir_desempenho
-./medir_desempenho
+gcc -Wall -DTAM=1000 -Iinclude testes/medir_desempenho.c src/fila.c src/armazenamento.c -o bin/medir_desempenho
+./bin/medir_desempenho
 ```
+
+O `./compilar.sh` já faz essa compilação; no VS Code, use a tarefa **Medir desempenho (E-02)**.
 
 - Fila **cheia** (pior caso: todas as 1000 posições ocupadas).
 - 100.000 repetições de `carregar_fila()` e de `salvar_fila()`, tempo total medido com `clock()`.

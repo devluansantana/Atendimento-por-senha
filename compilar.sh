@@ -1,19 +1,22 @@
 #!/bin/sh
 # Compila os programas e os testes (Linux / dentro do Docker).
-# Uso: ./compilar.sh
+# Uso: ./compilar.sh        (os executaveis vao para bin/)
 set -e
 cd "$(dirname "$0")"
 
-# -Wall: todos os avisos importantes (Definition of Done)
-# -g:    informacao de depuracao, para o gdb mostrar as linhas do codigo
-CFLAGS="-Wall -g"
+# -Wall:     todos os avisos importantes (Definition of Done)
+# -g:        informacao de depuracao, para o gdb mostrar as linhas do codigo
+# -Iinclude: os headers (.h) ficam na pasta include/
+CFLAGS="-Wall -g -Iinclude"
 
-gcc $CFLAGS cliente.c fila.c armazenamento.c -o cliente
-gcc $CFLAGS atendente.c demonstracao.c fila_linear.c fila.c armazenamento.c -o atendente
-gcc $CFLAGS demo_main.c demonstracao.c fila_linear.c fila.c -o demo
-gcc $CFLAGS -I. testes/teste_fila.c fila.c -o teste_fila
-gcc $CFLAGS -I. testes/teste_armazenamento.c fila.c armazenamento.c -o teste_armazenamento
-gcc $CFLAGS -I. testes/teste_dois_processos.c fila.c armazenamento.c -o teste_dois_processos
-gcc $CFLAGS -DTAM=1000 -I. testes/medir_desempenho.c fila.c armazenamento.c -o medir_desempenho
+mkdir -p bin
 
-echo "Compilado: ./cliente ./atendente ./demo ./teste_fila ./teste_armazenamento ./teste_dois_processos ./medir_desempenho"
+gcc $CFLAGS src/cliente.c src/fila.c src/armazenamento.c -o bin/cliente
+gcc $CFLAGS src/atendente.c src/demonstracao.c src/fila_linear.c src/fila.c src/armazenamento.c -o bin/atendente
+gcc $CFLAGS src/demo_main.c src/demonstracao.c src/fila_linear.c src/fila.c -o bin/demo
+gcc $CFLAGS testes/teste_fila.c src/fila.c -o bin/teste_fila
+gcc $CFLAGS testes/teste_armazenamento.c src/fila.c src/armazenamento.c -o bin/teste_armazenamento
+gcc $CFLAGS testes/teste_dois_processos.c src/fila.c src/armazenamento.c -o bin/teste_dois_processos
+gcc $CFLAGS -DTAM=1000 testes/medir_desempenho.c src/fila.c src/armazenamento.c -o bin/medir_desempenho
+
+echo "Compilado em bin/: cliente atendente demo teste_fila teste_armazenamento teste_dois_processos medir_desempenho"

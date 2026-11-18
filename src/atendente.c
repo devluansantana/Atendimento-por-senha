@@ -1,7 +1,8 @@
 /*
  * Programa do atendente (Duplas D e B): chama a proxima senha, mostra a fila
  * e roda a demonstracao fila linear x circular.
- * Compilar: gcc -Wall atendente.c demonstracao.c fila_linear.c fila.c armazenamento.c -o atendente
+ * Compilar (na raiz do projeto): ./compilar.sh   -> gera bin/atendente
+ * (junta src/atendente.c, demonstracao.c, fila_linear.c, fila.c e armazenamento.c)
  */
 #define _POSIX_C_SOURCE 200809L
 

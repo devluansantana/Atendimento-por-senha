@@ -11,7 +11,7 @@ falhou=""
 for teste in teste_fila teste_armazenamento teste_dois_processos; do
     echo
     echo "===== $teste ====="
-    if ! ./"$teste"; then
+    if ! ./bin/"$teste"; then
         falhou="$falhou $teste"
     fi
 done

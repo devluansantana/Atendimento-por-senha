@@ -2,9 +2,9 @@
  * Testes da camada de armazenamento (Dupla C): A-01 e A-02.
  * Linux apenas (usa fork). Compilar e rodar dentro do Docker:
  *
- *     gcc -Wall -I. testes/teste_armazenamento.c fila.c armazenamento.c -o teste_armazenamento
- *     ./teste_armazenamento               # todos os testes
- *     ./teste_armazenamento --sem-trava   # demonstra a condicao de corrida (para a apresentacao)
+ *     gcc -Wall -Iinclude testes/teste_armazenamento.c src/fila.c src/armazenamento.c -o bin/teste_armazenamento
+ *     ./bin/teste_armazenamento               # todos os testes
+ *     ./bin/teste_armazenamento --sem-trava   # demonstra a condicao de corrida (para a apresentacao)
  *
  * Os testes rodam numa pasta temporaria em /tmp, entao nao mexem no fila.dat do projeto.
  *

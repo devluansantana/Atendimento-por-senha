@@ -1,8 +1,10 @@
+# O Dockerfile nao copia nada do projeto (a pasta e montada em /app),
+# entao nada disto precisa ir para o Docker na hora de montar a imagem.
 .git
+bin/
 *.exe
 *.o
-cliente
-atendente
-teste_fila
 fila.dat
+fila.dat.tmp.*
 fila.lock
+.vscode/linux-headers/

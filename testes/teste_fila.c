@@ -1,7 +1,8 @@
 /*
  * F-05: testes da fila (Duplas A e B).
  * Compilar (na raiz do projeto):
- *     gcc -Wall -I. testes/teste_fila.c fila.c -o teste_fila
+ *     gcc -Wall -Iinclude testes/teste_fila.c src/fila.c -o bin/teste_fila
+ *     ./bin/teste_fila
  */
 #include <stdio.h>
 #include "fila.h"

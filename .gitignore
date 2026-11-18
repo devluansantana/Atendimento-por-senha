@@ -1,13 +1,16 @@
-# Executaveis
-cliente
-atendente
-demo
-teste_fila
-teste_armazenamento
-teste_dois_processos
-medir_desempenho
+# Executaveis (o compilar.sh gera tudo em bin/)
+bin/
 *.exe
 *.o
+
+# Executaveis antigos, gerados na raiz antes da pasta bin/ (podem ser apagados)
+/cliente
+/atendente
+/demo
+/teste_fila
+/teste_armazenamento
+/teste_dois_processos
+/medir_desempenho
 
 # Gerados ao rodar
 fila.dat

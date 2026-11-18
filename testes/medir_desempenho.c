@@ -3,8 +3,8 @@
  *
  * Responde a pergunta da apresentacao: "ler o arquivo inteiro toda vez nao fica lento?"
  * Compilar com TAM = 1000 (na raiz do projeto):
- *     gcc -Wall -O0 -DTAM=1000 -I. testes/medir_desempenho.c fila.c armazenamento.c -o medir_desempenho
- *     ./medir_desempenho
+ *     gcc -Wall -DTAM=1000 -Iinclude testes/medir_desempenho.c src/fila.c src/armazenamento.c -o bin/medir_desempenho
+ *     ./bin/medir_desempenho
  *
  * Roda numa pasta em /tmp, entao nao mexe no fila.dat do projeto.
  */

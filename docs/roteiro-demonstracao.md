@@ -2,7 +2,7 @@
 
 **História:** D-03, Dupla B (Arthur e Bruno). Precisa ser aprovado pelo PO (João Ferreira).
 
-Como apresentar: no terminal, rodar `./atendente` e escolher a opção **3 - Demonstração**. A tela para a cada passo e espera Enter, então dá tempo de explicar. Também dá para rodar só a demonstração com `./demo`.
+Como apresentar: no terminal, na pasta do projeto, rodar `./bin/atendente` e escolher a opção **3 - Demonstração**. A tela para a cada passo e espera Enter, então dá tempo de explicar. Também dá para rodar só a demonstração com `./bin/demo` (no VS Code: tarefa **Abrir demonstração linear x circular**).
 
 A demonstração roda toda em memória e **não mexe no `fila.dat`**. Usa `TAM = 5`.
 
@@ -64,7 +64,7 @@ Porque ela desperdiça as posições liberadas. A demonstração mostra isso: "c
 Funcionaria, mas cada chamada custaria percorrer o vetor inteiro. Na circular a chamada é uma conta só, independente do tamanho.
 
 **"Por que o vetor tem tamanho fixo (5)?"**
-Pela simplicidade e porque o arquivo `fila.dat` guarda a struct inteira num bloco só. O tamanho se muda em `TAM` no `fila.h`; para o teste de desempenho usamos 1000.
+Pela simplicidade e porque o arquivo `fila.dat` guarda a struct inteira num bloco só. O tamanho se muda em `TAM` no `include/fila.h`; para o teste de desempenho usamos 1000.
 
 ## Checklist de aprovação (PO)
 
