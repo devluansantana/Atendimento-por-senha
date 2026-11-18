@@ -13,3 +13,7 @@ medir_desempenho
 fila.dat
 fila.dat.tmp.*
 fila.lock
+
+# Headers do Linux copiados do container para o IntelliSense no Windows
+# (gerados por .vscode/preparar-intellisense.sh)
+.vscode/linux-headers/

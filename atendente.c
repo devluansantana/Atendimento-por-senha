@@ -5,8 +5,12 @@
  */
 #define _POSIX_C_SOURCE 200809L
 
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/select.h>
 #include <unistd.h>
 
@@ -14,16 +18,34 @@
 #include "armazenamento.h"
 #include "demonstracao.h"
 
-/* Le uma linha e converte para inteiro. Retorna 0 se a entrada acabou ou nao e numero. */
+/* Le uma linha e converte para inteiro.
+   Retorna  1 se a linha tem so um numero inteiro (ex.: "2" ou " 2 "),
+            0 se nao tem (linha vazia, "abc", "1abc", numero grande demais),
+           -1 se a entrada acabou (Ctrl+D ou terminal fechado). */
 static int ler_inteiro(const char *pergunta, int *valor) {
     char linha[64];
     char *fim;
+    long numero;
 
     printf("%s", pergunta);
     fflush(stdout);
-    if (fgets(linha, sizeof linha, stdin) == NULL) return 0;
-    *valor = (int)strtol(linha, &fim, 10);
-    return fim != linha;
+    if (fgets(linha, sizeof linha, stdin) == NULL) return -1;
+
+    /* Linha maior que o buffer: descarta o resto, senao ele viraria a proxima resposta. */
+    if (strchr(linha, '\n') == NULL && !feof(stdin)) {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) { }
+        return 0;
+    }
+
+    errno = 0;
+    numero = strtol(linha, &fim, 10);
+    if (fim == linha || errno == ERANGE || numero < INT_MIN || numero > INT_MAX) return 0;
+    while (isspace((unsigned char)*fim)) fim++;   /* aceita espacos e o '\n' no fim */
+    if (*fim != '\0') return 0;                    /* sobrou texto, ex.: "1abc" */
+
+    *valor = (int)numero;
+    return 1;
 }
 
 /* I-04: mostra o vetor (so as posicoes ocupadas), inicio, fim e qtd. */
@@ -113,14 +135,21 @@ int main(void) {
     int opcao;
 
     for (;;) {
+        int lido;
+
         printf("\n=== ATENDENTE ===\n");
         printf("1 - Chamar proxima\n");
         printf("2 - Ver fila\n");
         printf("3 - Demonstracao linear x circular\n");
         printf("4 - Acompanhar fila ao vivo\n");
         printf("0 - Sair\n");
-        if (!ler_inteiro("Opcao: ", &opcao)) break;
+        lido = ler_inteiro("Opcao: ", &opcao);
 
+        if (lido == -1) break;               /* entrada acabou */
+        if (lido == 0) {                     /* Enter vazio, letra etc.: pergunta de novo */
+            printf("Opcao invalida.\n");
+            continue;
+        }
         if (opcao == 0) break;
 
         switch (opcao) {

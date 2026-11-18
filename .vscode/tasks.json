@@ -1,0 +1,168 @@
+// Tarefas do projeto. Para rodar: Ctrl+Shift+P -> "Tasks: Run Task".
+//   Ctrl+Shift+B ............... Compilar tudo
+//   "Tasks: Run Test Task" ..... Rodar todos os testes
+//
+// Dentro do Dev Container (recomendado) os comandos rodam direto no Linux.
+// Com a pasta aberta no Windows, cada comando roda no container com
+// "docker compose exec" (o Docker Desktop precisa estar aberto).
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compilar tudo",
+      "detail": "./compilar.sh: programas e testes com gcc -Wall -g",
+      "type": "shell",
+      "command": "./compilar.sh",
+      "windows": {
+        "command": "docker compose up -d --no-recreate; if (-not $?) { exit 1 }; if (-not (Test-Path .vscode/linux-headers/gcc-macros.h)) { docker compose exec -T dev sh .vscode/preparar-intellisense.sh }; docker compose exec -T dev ./compilar.sh; exit $LASTEXITCODE",
+        "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } }
+      },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$gcc",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "Rodar todos os testes",
+      "detail": "./testar.sh: compila e roda teste_fila, teste_armazenamento e teste_dois_processos",
+      "type": "shell",
+      "command": "./testar.sh",
+      "windows": {
+        "command": "docker compose up -d --no-recreate; if (-not $?) { exit 1 }; docker compose exec -T dev ./testar.sh; exit $LASTEXITCODE",
+        "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } }
+      },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$gcc",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "Abrir cliente",
+      "detail": "Menu do cliente: gerar senha e consultar posicao",
+      "type": "shell",
+      "command": "./cliente",
+      "windows": { "command": "docker compose exec dev ./cliente" },
+      "dependsOn": "Compilar tudo",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true, "group": "sistema" }
+    },
+    {
+      "label": "Abrir atendente",
+      "detail": "Menu do atendente: chamar proxima, ver fila, demonstracao, fila ao vivo",
+      "type": "shell",
+      "command": "./atendente",
+      "windows": { "command": "docker compose exec dev ./atendente" },
+      "dependsOn": "Compilar tudo",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true, "group": "sistema" }
+    },
+    {
+      "label": "Abrir cliente e atendente lado a lado",
+      "detail": "Compila e abre os dois programas em terminais divididos, usando a mesma fila",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Compilar tudo", "cliente e atendente juntos"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cliente e atendente juntos",
+      "hide": true,
+      "dependsOrder": "parallel",
+      "dependsOn": ["cliente (ja compilado)", "atendente (ja compilado)"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cliente (ja compilado)",
+      "hide": true,
+      "type": "shell",
+      "command": "./cliente",
+      "windows": { "command": "docker compose exec dev ./cliente" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true, "group": "sistema" }
+    },
+    {
+      "label": "atendente (ja compilado)",
+      "hide": true,
+      "type": "shell",
+      "command": "./atendente",
+      "windows": { "command": "docker compose exec dev ./atendente" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "group": "sistema" }
+    },
+    {
+      "label": "Abrir demonstração linear x circular",
+      "detail": "Roteiro passo a passo da apresentacao (Enter para avancar); nao mexe no fila.dat",
+      "type": "shell",
+      "command": "./demo",
+      "windows": { "command": "docker compose exec dev ./demo" },
+      "dependsOn": "Compilar tudo",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Mostrar condição de corrida (com e sem trava)",
+      "detail": "4 processos gravando a fila: com trava nada se perde, sem trava varias gravacoes somem",
+      "type": "shell",
+      "command": "./teste_armazenamento --sem-trava",
+      "windows": { "command": "docker compose exec -T dev ./teste_armazenamento --sem-trava" },
+      "dependsOn": "Compilar tudo",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "Medir desempenho (E-02)",
+      "detail": "Tempo de carregar_fila() e salvar_fila() com TAM = 1000 (leva uns segundos)",
+      "type": "shell",
+      "command": "./medir_desempenho",
+      "windows": { "command": "docker compose exec -T dev ./medir_desempenho" },
+      "dependsOn": "Compilar tudo",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "Zerar a fila",
+      "detail": "Apaga fila.dat e fila.lock: a proxima senha volta a ser 1 (feche cliente e atendente antes)",
+      "type": "shell",
+      "command": "rm -f fila.dat fila.lock && echo 'Fila zerada: a proxima senha gerada sera a 1.'",
+      "windows": {
+        "command": "Remove-Item -ErrorAction SilentlyContinue fila.dat, fila.lock; Write-Output 'Fila zerada: a proxima senha gerada sera a 1.'",
+        "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "Preparar IntelliSense no Windows",
+      "detail": "Copia os headers do Linux do container para o editor entender unistd.h, sys/wait.h etc.",
+      "type": "shell",
+      "command": "sh .vscode/preparar-intellisense.sh",
+      "windows": {
+        "command": "docker compose up -d --no-recreate; if (-not $?) { exit 1 }; docker compose exec -T dev sh .vscode/preparar-intellisense.sh; exit $LASTEXITCODE",
+        "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } }
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "Docker: iniciar container",
+      "detail": "So para quem abriu a pasta no Windows (no Dev Container ele ja esta rodando)",
+      "type": "shell",
+      "command": "echo 'Voce ja esta dentro do container.'",
+      "windows": { "command": "docker compose up -d" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: reconstruir container",
+      "detail": "Depois de mudar o Dockerfile ou o docker-compose.yml",
+      "type": "shell",
+      "command": "echo 'Dentro do Dev Container use: Ctrl+Shift+P > Dev Containers: Rebuild Container'",
+      "windows": { "command": "docker compose up -d --build" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: desligar container",
+      "detail": "Para o container (os arquivos do projeto nao sao apagados)",
+      "type": "shell",
+      "command": "echo 'Dentro do Dev Container use: Ctrl+Shift+P > Dev Containers: Reopen Folder Locally'",
+      "windows": { "command": "docker compose down" },
+      "problemMatcher": []
+    }
+  ]
+}

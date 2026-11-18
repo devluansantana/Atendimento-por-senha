@@ -1,4 +1,7 @@
-# Scripts de shell precisam de LF para rodar no Linux/Docker;
-# o .bat precisa de CRLF para rodar no Windows.
-*.sh  text eol=lf
+# Todo arquivo de texto fica com LF (padrao do Linux, onde o projeto roda).
+# Sem isso, o Git de dentro do Dev Container acha que todos os arquivos mudaram
+# (o Windows grava CRLF) e alguem acaba commitando quebras de linha misturadas.
+* text=auto eol=lf
+
+# O .bat precisa de CRLF para rodar no Windows.
 *.bat text eol=crlf

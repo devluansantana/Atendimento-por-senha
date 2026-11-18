@@ -1,0 +1,28 @@
+// Abre o projeto DENTRO do container Linux (extensao "Dev Containers").
+// No VS Code: Ctrl+Shift+P -> "Dev Containers: Reopen in Container".
+//
+// Assim o IntelliSense usa o gcc e os headers do Linux (unistd.h, sys/wait.h...),
+// sem os falsos erros que aparecem com a pasta aberta direto no Windows, e os
+// terminais, as tarefas (.vscode/tasks.json) e o depurador (F5) rodam no Linux.
+{
+  "name": "Atendimento por Senhas (C / Linux)",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "dev",
+  "workspaceFolder": "/app",
+
+  // Fechar o VS Code nao desliga o container (os terminais do Windows podem estar usando).
+  "shutdownAction": "none",
+
+  // Deixa os programas compilados assim que o container fica pronto.
+  "postCreateCommand": "./compilar.sh",
+
+  "customizations": {
+    "vscode": {
+      // O IntelliSense usa a configuracao "Linux" de .vscode/c_cpp_properties.json.
+      "extensions": ["ms-vscode.cpptools"],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

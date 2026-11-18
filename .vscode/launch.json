@@ -1,0 +1,65 @@
+// Depuracao com gdb (F5). So funciona DENTRO do Dev Container, onde estao o Linux e o gdb.
+// Coloque um breakpoint clicando a esquerda do numero da linha, escolha a configuracao
+// na aba "Run and Debug" (Ctrl+Shift+D) e aperte F5. O programa roda no terminal integrado.
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Depurar cliente",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/cliente",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "externalConsole": false,
+      "preLaunchTask": "Compilar tudo",
+      "setupCommands": [
+        { "description": "Mostrar structs e vetores de forma legivel", "text": "-enable-pretty-printing", "ignoreFailures": true }
+      ]
+    },
+    {
+      "name": "Depurar atendente",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/atendente",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "externalConsole": false,
+      "preLaunchTask": "Compilar tudo",
+      "setupCommands": [
+        { "description": "Mostrar structs e vetores de forma legivel", "text": "-enable-pretty-printing", "ignoreFailures": true }
+      ]
+    },
+    {
+      "name": "Depurar testes da fila",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/teste_fila",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "externalConsole": false,
+      "preLaunchTask": "Compilar tudo",
+      "setupCommands": [
+        { "description": "Mostrar structs e vetores de forma legivel", "text": "-enable-pretty-printing", "ignoreFailures": true }
+      ]
+    },
+    {
+      "name": "Depurar testes do armazenamento",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/teste_armazenamento",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "externalConsole": false,
+      "preLaunchTask": "Compilar tudo",
+      "setupCommands": [
+        { "description": "Mostrar structs e vetores de forma legivel", "text": "-enable-pretty-printing", "ignoreFailures": true },
+        { "description": "Seguir o processo pai nos fork()", "text": "-gdb-set follow-fork-mode parent", "ignoreFailures": true }
+      ]
+    }
+  ]
+}

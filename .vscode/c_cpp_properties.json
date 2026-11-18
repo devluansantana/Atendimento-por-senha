@@ -1,0 +1,30 @@
+{
+  // Configuracao do IntelliSense (extensao C/C++). O VS Code escolhe sozinho pelo sistema:
+  //   "Win32": pasta aberta direto no Windows. Usa os headers do Linux copiados do
+  //            container para .vscode/linux-headers/ (a tarefa "Compilar tudo" copia
+  //            na primeira vez), entao o editor entende unistd.h, sys/wait.h etc.
+  //   "Linux": dentro do Dev Container. Usa o gcc do proprio container.
+  "version": 4,
+  "configurations": [
+    {
+      "name": "Win32",
+      "includePath": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/.vscode/linux-headers/gcc-include",
+        "${workspaceFolder}/.vscode/linux-headers/include/x86_64-linux-gnu",
+        "${workspaceFolder}/.vscode/linux-headers/include"
+      ],
+      "forcedInclude": ["${workspaceFolder}/.vscode/linux-headers/gcc-macros.h"],
+      "compilerPath": "",
+      "cStandard": "gnu17",
+      "intelliSenseMode": "linux-gcc-x64"
+    },
+    {
+      "name": "Linux",
+      "includePath": ["${workspaceFolder}"],
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu17",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ]
+}

@@ -59,7 +59,6 @@ int main(void) {
 
     /* limpeza da pasta temporaria */
     remove(ARQUIVO_FILA);
-    chdir("/");
-    rmdir(pasta);
+    if (chdir("/") == 0) rmdir(pasta);
     return 0;
 }

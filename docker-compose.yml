@@ -2,7 +2,6 @@ services:
   dev:
     build: .
     image: atendimento-senhas-dev
-    container_name: atendimento-senhas
     volumes:
       - .:/app
     working_dir: /app
@@ -10,3 +9,9 @@ services:
     # (um para o cliente, outro para o atendente) com "docker compose exec".
     command: sleep infinity
     init: true
+    # Necessario para o gdb (depurador) e para o AddressSanitizer funcionarem
+    # dentro do container. E um ambiente de desenvolvimento local.
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined

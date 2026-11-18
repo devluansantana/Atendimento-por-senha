@@ -21,10 +21,10 @@ gcc -Wall -DTAM=1000 -I. testes/medir_desempenho.c fila.c armazenamento.c -o med
 |---|---|
 | `TAM` | 1000 |
 | `sizeof(Fila)` | 4016 bytes (≈ 4 KB) |
-| `carregar_fila()` | **≈ 1,3 microssegundos** por chamada |
-| `salvar_fila()` | ≈ 37 microssegundos por chamada |
+| `carregar_fila()` | **≈ 9 microssegundos** por chamada (0,009 ms) |
+| `salvar_fila()` | ≈ 130 microssegundos por chamada (0,13 ms) |
 
-Medido em container Linux; os números variam conforme a máquina, então **rode no computador da apresentação** e anote aqui o valor real.
+Medido em 18/11/2026 no computador da apresentação (Windows + Docker Desktop, container Linux), duas execuções seguidas: 8,9 e 9,3 µs para ler; 125 e 132 µs para gravar. Em outra máquina, mais rápida, a mesma medição deu ≈ 1,3 µs e ≈ 37 µs: os números variam conforme o computador, mas ficam sempre muito abaixo de 1 milissegundo. Se apresentar em outro computador, rode de novo (tarefa **Medir desempenho (E-02)** no VS Code) e anote aqui.
 
 ## Como interpretar
 
@@ -35,4 +35,4 @@ Medido em container Linux; os números variam conforme a máquina, então **rode
 
 ## Resposta pronta para a banca
 
-> "Medimos com TAM = 1000, o pior caso, com a fila cheia: ler o arquivo leva cerca de 1 microssegundo. Como o vetor tem tamanho fixo, o custo não cresce com o número de pessoas na fila. Para esta escala não é um problema; em um sistema grande usaríamos um banco de dados."
+> "Medimos com TAM = 1000, o pior caso, com a fila cheia: ler o arquivo leva cerca de 9 microssegundos, menos de um centésimo de milissegundo. Como o vetor tem tamanho fixo, o custo não cresce com o número de pessoas na fila. Para esta escala não é um problema; em um sistema grande usaríamos um banco de dados."

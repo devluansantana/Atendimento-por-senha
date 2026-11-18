@@ -12,6 +12,7 @@
  */
 #define _POSIX_C_SOURCE 200809L
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -22,6 +23,7 @@
 #include "armazenamento.h"
 
 #define TOTAL 20
+#define LIMITE_S 30   /* se um processo travar, ele e encerrado e o teste FALHA em vez de travar */
 
 static int falhas = 0;
 
@@ -39,6 +41,7 @@ static void processo_cliente(void) {
     Fila f;
     int geradas = 0;
 
+    alarm(LIMITE_S);   /* sem o atendente, a fila enche e este laco nunca terminaria */
     while (geradas < TOTAL) {
         int senha;
         travar();
@@ -58,6 +61,7 @@ static void processo_atendente(int escrita) {
     Fila f;
     int chamadas = 0;
 
+    alarm(LIMITE_S);   /* sem o cliente, a fila fica vazia e este laco nunca terminaria */
     while (chamadas < TOTAL) {
         int senha;
         travar();
@@ -79,6 +83,10 @@ static void processo_atendente(int escrita) {
 static int filho_ok(pid_t pid) {
     int status;
     waitpid(pid, &status, 0);
+    if (WIFSIGNALED(status) && WTERMSIG(status) == SIGALRM) {
+        printf("        (o processo %ld passou de %d s e foi encerrado: travou?)\n",
+               (long)pid, LIMITE_S);
+    }
     return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
@@ -130,5 +138,10 @@ int main(void) {
     CHECA(access(ARQUIVO_TRAVA, F_OK) != 0, "fila.lock foi apagado no fim");
 
     printf("\n%d falha(s)\n", falhas);
+
+    /* limpeza da pasta temporaria */
+    remove(ARQUIVO_FILA);
+    remove(ARQUIVO_TRAVA);
+    if (chdir("/") == 0) rmdir(pasta);
     return falhas != 0;
 }

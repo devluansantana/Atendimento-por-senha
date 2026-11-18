@@ -1,0 +1,9 @@
+{
+  // O projeto roda no Linux: arquivos novos ja nascem com quebra de linha LF.
+  "files.eol": "\n",
+
+  // Os .h deste projeto sao C, nao C++.
+  "files.associations": {
+    "*.h": "c"
+  }
+}

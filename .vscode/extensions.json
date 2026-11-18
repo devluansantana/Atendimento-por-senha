@@ -1,0 +1,7 @@
+{
+  // O VS Code sugere instalar estas extensoes ao abrir o projeto.
+  "recommendations": [
+    "ms-vscode-remote.remote-containers",
+    "ms-vscode.cpptools"
+  ]
+}
