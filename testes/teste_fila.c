@@ -16,7 +16,9 @@ int main(void) {
     Fila f;
     inicializar(&f);
 
-    /* TODO (F-05): cobrir fila vazia, fila cheia, volta do indice para 0 e ordem FIFO */
+    /* F-05: cobre fila vazia, fila cheia, volta do indice para 0 e ordem FIFO */
+    CHECA(f.qtd == 0 && f.inicio == 0 && f.fim == 0 && f.proxima_senha == 1,
+          "fila nova comeca zerada (F-01)");
     CHECA(desenfileirar(&f) == -1, "fila vazia retorna -1 ao desenfileirar");
 
     /* teste 2 - fila */
@@ -25,8 +27,9 @@ int main(void) {
     enfileirar(&f);
     enfileirar(&f);
     enfileirar(&f);
-    
+
     /*teste 3 - indice circular */
+    CHECA(f.fim == 0, "fim volta para 0 depois da ultima posicao: (4 + 1) % 5");
     CHECA(f.qtd == TAM, "fila fica cheia após inserir 5 senhas");
     CHECA(enfileirar(&f) == -1, "fila cheia retorna -1 ao enfileirar");
 

@@ -1,8 +1,11 @@
 # Executaveis
 cliente
 atendente
+demo
 teste_fila
 teste_armazenamento
+teste_dois_processos
+medir_desempenho
 *.exe
 *.o
 

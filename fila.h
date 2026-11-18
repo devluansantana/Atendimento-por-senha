@@ -8,7 +8,9 @@
  * CONTRATO: nao mudar estas assinaturas sem combinar com o time.
  */
 
+#ifndef TAM            /* permite medir com outro tamanho: gcc -DTAM=1000 (E-02) */
 #define TAM 5
+#endif
 
 typedef struct {
     int senhas[TAM];
